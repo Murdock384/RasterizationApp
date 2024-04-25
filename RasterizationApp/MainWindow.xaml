@@ -9,8 +9,18 @@
     <Grid>
         <Canvas Name="Canvas" Background="White"
                 MouseDown="Canvas_MouseDown"
-                MouseMove="Canvas_MouseMove"
-                MouseUp="Canvas_MouseUp"/>
-        
+                
+                MouseMove="Canvas_MouseMove"/>
+        <Button Content="Line Style" Click="DrawLinesButton_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="25,15,0,0"/>
+
+        <!-- Draw Circles Button -->
+        <Button Content="Circle Style" Click="DrawCirclesButton_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="95,15,0,0"/>
+        <Button Content="Polygon Style" Click="DrawPolygonsButton_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="175,15,0,0"/>
+        <Button Content="Select Color" Click="SelectColor_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="269,15,0,0"/>
+        <Button Content="Anti Aliasing" Click="AntiAliasingButton_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="351,15,0,0" RenderTransformOrigin="-0.077,0.353"/>
+        <Button Content="Save Shapes" Click="Save_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="436,15,0,0"/>
+        <Button Content="Load Shapes" Click="Load_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="515,15,0,0" RenderTransformOrigin="0.589,0.527"/>
+        <Button Content="Clear Canvas" Click="CanvasClear_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="600,15,0,0"/>
+        <Button Content="Capsule Style" Click="Capsule_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="675,15,0,0"/>
     </Grid>
 </Window>
