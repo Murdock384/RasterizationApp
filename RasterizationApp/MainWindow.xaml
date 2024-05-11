@@ -5,12 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:RasterizationApp"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="450" Width="800" WindowState="Maximized" Background="DarkSlateGray">
     <Grid>
-        <Canvas Name="Canvas" Background="White"
+        <!--<Canvas Name="Canvas" Background="White"
                 MouseDown="Canvas_MouseDown"
                 
-                MouseMove="Canvas_MouseMove"/>
+                MouseMove="Canvas_MouseMove"/>-->
+
+        <Image Height="800" Width="1200" Name="ImageCanvas" MouseDown="Canvas_MouseDown" MouseMove="Canvas_MouseMove"/>
         <Button Content="Line Style" Click="DrawLinesButton_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="25,15,0,0"/>
 
         <!-- Draw Circles Button -->
@@ -21,6 +23,7 @@
         <Button Content="Save Shapes" Click="Save_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="436,15,0,0"/>
         <Button Content="Load Shapes" Click="Load_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="515,15,0,0" RenderTransformOrigin="0.589,0.527"/>
         <Button Content="Clear Canvas" Click="CanvasClear_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="600,15,0,0"/>
-        <Button Content="Capsule Style" Click="Capsule_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="675,15,0,0"/>
+        <!--<Button Content="Capsule Style" Click="Capsule_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="675,15,0,0"/>-->
+        <Button Content="Rectangle Style" Click="Rectangle_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="687,15,0,0"/>
     </Grid>
 </Window>

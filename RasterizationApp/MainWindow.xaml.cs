@@ -15,6 +15,7 @@ using Newtonsoft.Json;
 using System.IO;
 using Newtonsoft.Json.Linq;
 using System.Security.Cryptography;
+using System.Windows.Media.Imaging;
 namespace RasterizationApp
 
 {
@@ -50,21 +51,54 @@ namespace RasterizationApp
         private bool isMovingVertex = false;
         private int selectedVertexIndex = -1;
         private bool isMovingEdge = false;
-       
+        private List<Rectangles.Rectangle> rectangles = new List<Rectangles.Rectangle>();
+        private bool isFirstRectanglePoint = true;
+   
+        private Rectangles.Rectangle selectedRectangle;
+        private WriteableBitmap writableBitmap;
+        private int width = 1200;
+        private int height = 800;
 
-        
+
 
         private bool antiAliasing = false;
         public MainWindow()
         {
             InitializeComponent();
+            InitializeWritableBitmap();
+            
             PreviewKeyDown += Window_PreviewKeyDown;
         }
 
+        private void InitializeWritableBitmap()
+        {
+            writableBitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
+
+            ImageCanvas.Source = writableBitmap;
+            SetBitmapColor(writableBitmap, Colors.White);
+        }
+       
+        public static void SetBitmapColor(WriteableBitmap bitmap, System.Windows.Media.Color color)
+        {
+            int bytesPerPixel = (bitmap.Format.BitsPerPixel + 7) / 8;
+            int stride = bitmap.PixelWidth * bytesPerPixel;
+            int size = stride * bitmap.PixelHeight;
+            byte[] pixels = new byte[size];
+
+            for (int i = 0; i < size; i += bytesPerPixel)
+            {
+                pixels[i] = color.B;
+                pixels[i + 1] = color.G;
+                pixels[i + 2] = color.R;
+                pixels[i + 3] = color.A;
+            }
+
+            bitmap.WritePixels(new Int32Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight), pixels, stride, 0);
+        }
 
         private void Canvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            Point clickedPoint = e.GetPosition(Canvas);
+            Point clickedPoint = e.GetPosition(ImageCanvas);
             if (figure == "lines")
             {
                
@@ -323,6 +357,7 @@ namespace RasterizationApp
                 }
 
             }
+
             if (figure == "capsule")
             {
                 if (firstCapsuleClick)
@@ -411,9 +446,120 @@ namespace RasterizationApp
                     firstCapsuleClick = true;
                 }
             }
+            if (figure == "rectangles")
+            {
+                
+                if (e.RightButton == MouseButtonState.Pressed)
+                {
+                    if (selectedRectangle == null)
+                    {
+                        selectedRectangle = GetSelectedRectangle(clickedPoint);
+                        RedrawCanvas();
+                    }
+                    else
+                    {
+                        selectedRectangle = null;
+                        RedrawCanvas();
+                    }
+                    return;
+                }
+
+                else if (selectedRectangle != null && (e.ChangedButton == MouseButton.XButton1))
+                {
+                    List<Point> selectedRectangleVertices = new List<Point>();
+ 
+                    selectedRectangleVertices.Add(selectedRectangle.cornerPoint1);
+                    selectedRectangleVertices.Add(selectedRectangle.cornerPoint2);
+                    selectedRectangleVertices.Add(new Point(selectedRectangle.cornerPoint1.X, selectedRectangle.cornerPoint2.Y));
+                    selectedRectangleVertices.Add(new Point(selectedRectangle.cornerPoint2.X, selectedRectangle.cornerPoint1.Y));
+
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (PointIsCloseToVertex(clickedPoint, selectedRectangleVertices[i]))
+                        {
+                            isMovingVertex = true;
+                            selectedVertexIndex = i;
+                            return;
+                        }
+                    }
+
+                    
+                    return;
+                }
+                else if (selectedRectangle != null)
+                {
+                    MoveRectangle(clickedPoint);
+                    
+                }
+
+
+                else if (!isMovingVertex && e.LeftButton == MouseButtonState.Pressed)
+                {
+                    if (selectedRectangle == null)
+                    {
+                        if(isFirstRectanglePoint == true)
+                        {
+                            startPoint = clickedPoint;
+                            isFirstRectanglePoint = false;
+                        }
+                        else if (isFirstRectanglePoint == false)
+                        {
+                            endPoint = clickedPoint;
+                            Rectangles.Rectangle newRectangle = new Rectangles.Rectangle(startPoint, endPoint, 1);
+                            DrawFinalRectangle(newRectangle.cornerPoint1,newRectangle.cornerPoint2, newRectangle.Thickness,newRectangle.Color);
+                            rectangles.Add(newRectangle);
+                            isFirstRectanglePoint = true;
+
+                        }
+                     
+                    }
+                    
+                   
+                      
+                    
+                }
+            }
 
 
         }
+
+        private bool PointIsCloseToVertex(Point point, Point vertex)
+        {
+            double distance = Math.Sqrt(Math.Pow(point.X - vertex.X, 2) + Math.Pow(point.Y - vertex.Y, 2));
+            return distance < 4;
+        }
+        private void MoveRectangle(Point clickedPoint)
+        {
+            double dx = clickedPoint.X - startPoint.X;
+            double dy = clickedPoint.Y - startPoint.Y;
+
+            selectedRectangle.cornerPoint1 = new Point(selectedRectangle.cornerPoint1.X + dx, selectedRectangle.cornerPoint1.Y + dy);
+            selectedRectangle.cornerPoint2 = new Point(selectedRectangle.cornerPoint2.X + dx, selectedRectangle.cornerPoint2.Y + dy);
+
+            RedrawCanvas();
+        }
+        private Rectangles.Rectangle GetSelectedRectangle(Point clickedPoint)
+        {
+            foreach (Rectangles.Rectangle rectangle in rectangles)
+            {
+                if (IsPointInsideRectangle(clickedPoint, rectangle))
+                {
+                    return rectangle;
+                }
+            }
+            return null;
+        }
+
+        private bool IsPointInsideRectangle(Point point, Rectangles.Rectangle rectangle)
+        {
+            double left = Math.Min(rectangle.cornerPoint1.X, rectangle.cornerPoint2.X);
+            double right = Math.Max(rectangle.cornerPoint1.X, rectangle.cornerPoint2.X);
+            double top = Math.Min(rectangle.cornerPoint1.Y, rectangle.cornerPoint2.Y);
+            double bottom = Math.Max(rectangle.cornerPoint1.Y, rectangle.cornerPoint2.Y);
+
+            return (point.X >= left && point.X <= right && point.Y >= top && point.Y <= bottom);
+        }
+
 
 
         private double CalculateDistanceToPolygonEdge(Point point, Point startPoint, Point endPoint)
@@ -604,12 +750,12 @@ namespace RasterizationApp
         {
             if (isMovingVertex && selectedPolygon != null)
             {
-                selectedPolygon.vertices[selectedVertexIndex] = e.GetPosition(Canvas);
+                selectedPolygon.vertices[selectedVertexIndex] = e.GetPosition(ImageCanvas);
                 RedrawCanvas();
             }
             if (isMovingVertex && selectedSegment != null)
             {
-                selectedSegment.Start = e.GetPosition(Canvas);
+                selectedSegment.Start = e.GetPosition(ImageCanvas);
                 RedrawCanvas();
             }
             
@@ -619,8 +765,8 @@ namespace RasterizationApp
 
         private void RedrawCanvas()
         {
-        
-            Canvas.Children.Clear();
+
+            InitializeWritableBitmap();
             foreach (LineSegments.LineSegment segment in lineSegments)
             {
                 if(antiAliasing == false)
@@ -660,6 +806,14 @@ namespace RasterizationApp
                 else
                     DrawPolygon(polygon,polygon.thickness,polygon.Color);
             }
+
+            foreach (Rectangles.Rectangle rectangle in rectangles)
+            {
+                if (rectangle == selectedRectangle)
+                    DrawFinalRectangle(rectangle.cornerPoint1,rectangle.cornerPoint2,rectangle.Thickness,Brushes.Red);
+                else
+                    DrawFinalRectangle(rectangle.cornerPoint1, rectangle.cornerPoint2, rectangle.Thickness, rectangle.Color);
+            }
         }
         private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
@@ -680,6 +834,13 @@ namespace RasterizationApp
             {
                 polygons.Remove(selectedPolygon);
                 selectedPolygon = null;
+                RedrawCanvas();
+            }
+
+            if (e.Key == Key.Back && selectedRectangle != null)
+            {
+                rectangles.Remove(selectedRectangle);
+                selectedRectangle = null;
                 RedrawCanvas();
             }
             //Increasing and decreasing thickness of lines
@@ -715,6 +876,17 @@ namespace RasterizationApp
                 selectedPolygon.thickness -= 2;
                 RedrawCanvas();
             }
+            else if (e.Key == Key.Up && selectedRectangle != null)
+            {
+                selectedRectangle.Thickness += 2;
+                RedrawCanvas();
+            }
+            else if (e.Key == Key.Down && selectedRectangle != null && selectedRectangle.Thickness > 1)
+            {
+                selectedRectangle.Thickness -= 2;
+                RedrawCanvas();
+            }
+
 
             else if (e.Key == Key.M && selectedPolygon != null)
             {
@@ -727,6 +899,12 @@ namespace RasterizationApp
                 
                 isMovingVertex = false;
             }
+            else if (e.Key == Key.M && selectedRectangle != null)
+            {
+
+                isMovingVertex = false;
+            }
+
 
             if (e.Key == Key.E)
             {
@@ -747,6 +925,8 @@ namespace RasterizationApp
         /* https://www.geeksforgeeks.org/dda-line-generation-algorithm-computer-graphics */
         private void DrawLineDDA(Point p1, Point p2, int thickness, SolidColorBrush color = null)
         {
+            if (!IsPointWithinBounds(p1) || !IsPointWithinBounds(p2))
+                return;
             int x0 = (int)p1.X;
             int y0 = (int)p1.Y;
             int x1 = (int)p2.X;
@@ -816,8 +996,7 @@ namespace RasterizationApp
             
         }
 
-
-        private void PutPixel(int x, int y, SolidColorBrush color = null)
+        /*private void PutPixel(int x, int y, SolidColorBrush color = null)
         {
             Rectangle pixel = new Rectangle
             {
@@ -829,7 +1008,39 @@ namespace RasterizationApp
             Canvas.SetLeft(pixel, x);
             Canvas.SetTop(pixel, y);
             Canvas.Children.Add(pixel);
+        }*/
+
+        private void PutPixel(int x, int y, SolidColorBrush color)
+        {
+            if (color == null)
+            {
+                
+                color = Brushes.Black;
+            }
+
+            byte[] colorData = { color.Color.B, color.Color.G, color.Color.R, color.Color.A };
+
+            int bytesPerPixel = (writableBitmap.Format.BitsPerPixel + 7) / 8;
+            int stride = writableBitmap.PixelWidth * bytesPerPixel;
+
+            writableBitmap.WritePixels(new Int32Rect(x, y, 1, 1), colorData, stride, 0);
         }
+        private bool IsPointWithinBounds(Point point)
+        {
+            return point.X >= 0 && point.X < width && point.Y >= 0 && point.Y < height;
+        }
+
+        private bool IsBoundingBoxWithinBounds(Point center, int radius)
+        {
+            double left = center.X - radius;
+            double top = center.Y - radius;
+            double right = center.X + radius;
+            double bottom = center.Y + radius;
+
+            return left >= 0 && top >= 0 && right < width && bottom < height;
+        }
+
+
 
 
         private void ThickAntialiasedLine(Point p1, Point p2, float thickness, SolidColorBrush color)
@@ -855,9 +1066,9 @@ namespace RasterizationApp
             float slope = (float)(y2 - y1) / (x2 - x1);
 
 
-            bool isVertical = Math.Abs(slope) > 1;
+            bool isMoreVertical = Math.Abs(slope) > 1;
 
-            if (!isVertical)
+            if (!isMoreVertical)
             {
                 for (i = 1; (x + i * xDirection) != x2 && Math.Abs(y - y2) > 1 && IntensifyPixel(x + i * xDirection, y, thickness, i * two_dx_invDenom, color) != 0; ++i) ;
                 for (i = 1; (x - i * xDirection) != x2 && Math.Abs(y - y2) > 1 && IntensifyPixel(x - i * xDirection, y, thickness, i * two_dx_invDenom, color) != 0; ++i) ;
@@ -868,7 +1079,7 @@ namespace RasterizationApp
                 for (i = 1; (y - i * yDirection) != y2 && IntensifyPixel(x, y - i * yDirection, thickness, i * two_dx_invDenom, color) != 0; ++i) ;
             }
 
-            while ((x != x2 || Math.Abs(y - y2) > 1) && (x >= 0 && x < Canvas.ActualWidth && y >= 0 && y < Canvas.ActualHeight))
+            while ((x != x2 || Math.Abs(y - y2) > 1) && (x >= 0 && x < ImageCanvas.ActualWidth && y >= 0 && y < ImageCanvas.ActualHeight))
             {
                 if (d < 0)
                 {
@@ -902,12 +1113,6 @@ namespace RasterizationApp
         }
 
 
-        
-
-
-    
-
-        
 
         /*private float Coverage(float thickness, float distance, float r)
         {
@@ -1010,6 +1215,9 @@ namespace RasterizationApp
             
         private void DrawCircleMidpoint(Point center, int radius, SolidColorBrush outlineColor = null, SolidColorBrush fillColor = null)
         {
+            if (!IsBoundingBoxWithinBounds(center, radius))
+                return;
+
             int x = 0;
             int y = radius;
             int d = 1 - radius;
@@ -1181,6 +1389,18 @@ namespace RasterizationApp
         {
             return ((P1.X - P0.X) * (P2.Y - P0.Y) - (P2.X - P0.X) * (P1.Y - P0.Y));
         }
+
+        //Rectangles
+        private void DrawFinalRectangle(Point startPoint,Point endPoint,int thickness,SolidColorBrush color)
+        {
+ 
+            // Draw the rectangle using DrawLineDDA
+            DrawLineDDA(startPoint, new Point(startPoint.X, endPoint.Y), thickness, color); // Left
+            DrawLineDDA(startPoint, new Point(endPoint.X, startPoint.Y), thickness,color); // Top
+            DrawLineDDA(new Point(startPoint.X, endPoint.Y), endPoint, thickness, color); // Bottom
+            DrawLineDDA(new Point(endPoint.X, startPoint.Y), endPoint, thickness, color); // Right
+
+        }
         //Applying Color 
         private void ApplySelectedColor(SolidColorBrush color)
         {
@@ -1204,7 +1424,6 @@ namespace RasterizationApp
             }
         }
 
-
         //Button Click Handlers
         private void DrawLinesButton_Click(object sender, RoutedEventArgs e)
         {
@@ -1223,6 +1442,10 @@ namespace RasterizationApp
         private void Capsule_Click(object sender, RoutedEventArgs e)
         {
             figure = "capsule";
+        }
+        private void Rectangle_Click(object sender, RoutedEventArgs e)
+        {
+            figure = "rectangles";
         }
 
         private void AntiAliasingButton_Click(object sender, RoutedEventArgs e)
@@ -1410,10 +1633,12 @@ namespace RasterizationApp
             isDrawing = false;
             isFirstClick = true;
             figure = "";
-            Canvas.Children.Clear();
+            InitializeWritableBitmap();
 
         }
 
     }
+
+
 }
 
